@@ -1,0 +1,10 @@
+.DS_Store
+**/.DS_Store
+node_modules/
+*.log
+*.tmp
+*.metallib
+.build/
+DerivedData/
+.swiftpm/
+.agents/teamwork/

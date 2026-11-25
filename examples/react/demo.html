@@ -1,0 +1,1870 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Voice-to-Text Particle Dictation Card — Variant A vs Variant B</title>
+    <style>
+      :root {
+        color-scheme: only dark;
+        --stage-bg: #0d0d0d;
+        --card-bg: #1e1e1e;
+        --card-border: #282828;
+        --btn-bg: #343434;
+        --btn-border: #3e3e3e;
+        --text-muted: #747474;
+        --text-bright: #e7e7e7;
+        --status-text: #787878;
+        --icon-fg: #f0f0f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100%;
+        background-color: var(--stage-bg);
+        color: var(--text-bright);
+        font-family: "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Inter", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow-x: hidden;
+      }
+
+      main.stage-shell {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Exact 1080x1080 showcase canvas matching reference layout (scales down smoothly on narrow viewports) */
+      .stage {
+        position: relative;
+        width: 1080px;
+        height: 1080px;
+        background-color: #0d0d0d;
+        flex-shrink: 0;
+        transform-origin: top center;
+      }
+
+      .stage.single-card {
+        height: 540px;
+      }
+
+      .badge {
+        position: absolute;
+        left: 512px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background-color: #efefef;
+        color: #111111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 27px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        user-select: none;
+      }
+
+      .badge-a {
+        top: 130px;
+      }
+
+      .badge-b {
+        top: 602px;
+      }
+
+      .stage.single-card .badge-a,
+      .stage.single-card .badge-b {
+        top: 68px;
+      }
+
+      .card-slot {
+        position: absolute;
+        left: 101px;
+      }
+
+      .card-slot-a {
+        top: 216px;
+      }
+
+      .card-slot-b {
+        top: 688px;
+      }
+
+      .stage.single-card .card-slot-a,
+      .stage.single-card .card-slot-b {
+        top: 154px;
+      }
+
+      /* ================================================================
+       * ParticleDictationCard Scoped Styles (1:1 with ParticleDictationCard.tsx)
+       * ============================================================== */
+      .pdc-shell {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 270px;
+        display: inline-block;
+        padding: 20px 36px 52px 36px;
+        margin: -20px -36px -52px -36px;
+      }
+
+      .pdc-card {
+        position: relative;
+        width: 878px;
+        height: 270px;
+        color-scheme: only dark;
+        background-color: var(--card-bg);
+        color: var(--text-bright);
+        border: 1.5px solid var(--card-border);
+        border-radius: 38px;
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.03),
+          0 22px 44px rgba(0, 0, 0, 0.56),
+          0 4px 14px rgba(0, 0, 0, 0.36);
+        overflow: hidden;
+        user-select: text;
+      }
+
+      .pdc-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .pdc-text-layer {
+        position: absolute;
+        top: 40px;
+        left: 38px;
+        right: 170px;
+        z-index: 1;
+        font-size: 31px;
+        line-height: 41px;
+        font-weight: 400;
+        letter-spacing: -0.015em;
+        color: var(--text-bright);
+      }
+
+      .pdc-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+        color: var(--text-muted);
+        white-space: nowrap;
+        pointer-events: none;
+        will-change: opacity, filter;
+      }
+
+      .pdc-transcript {
+        position: relative;
+        margin: 0;
+        color: var(--text-bright);
+      }
+
+      .pdc-line {
+        display: block;
+        min-height: 41px;
+      }
+
+      .pdc-word {
+        display: inline-block;
+        white-space: pre;
+        will-change: opacity, filter;
+      }
+
+      .pdc-status {
+        position: absolute;
+        top: 45px;
+        right: 36px;
+        z-index: 3;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 21px;
+        line-height: 28px;
+        font-weight: 400;
+        color: var(--status-text);
+        font-variant-numeric: tabular-nums;
+        pointer-events: none;
+        will-change: opacity;
+      }
+
+      .pdc-status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #fdfdfd;
+        flex-shrink: 0;
+        will-change: opacity, transform;
+      }
+
+      .pdc-action-btn {
+        position: absolute;
+        right: 28px;
+        bottom: 40px;
+        z-index: 4;
+        width: 82px;
+        height: 82px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 50%;
+        border: 1px solid var(--btn-border);
+        background-color: var(--btn-bg);
+        color: var(--icon-fg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        outline: none;
+        transition: background-color 150ms ease, border-color 150ms ease;
+      }
+
+      .pdc-action-btn:hover {
+        background-color: #3d3d3d;
+        border-color: #4a4a4a;
+      }
+
+      .pdc-action-btn:focus-visible {
+        outline: 3px solid #f0f0f0;
+        outline-offset: 4px;
+      }
+
+      .pdc-icon-slot {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        will-change: opacity, transform, filter;
+      }
+
+      .pdc-stop-square {
+        width: 17px;
+        height: 17px;
+        border-radius: 4.5px;
+        background-color: var(--icon-fg);
+      }
+
+      .pdc-dots-wave {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .pdc-wave-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: var(--icon-fg);
+      }
+
+      .visually-hidden:where(:not(:focus-within, :active)) {
+        position: absolute !important;
+        clip-path: inset(50%) !important;
+        overflow: hidden !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        white-space: nowrap !important;
+      }
+
+      /* Interactive Control Dock (hidden automatically in ?t= scrub or ?clean=1 capture mode) */
+      .controls-dock {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 16px;
+        background-color: rgba(24, 24, 24, 0.92);
+        border: 1px solid #303030;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+        font-size: 13px;
+        color: #d4d4d4;
+      }
+
+      .controls-dock[hidden] {
+        display: none;
+      }
+
+      .ctrl-btn {
+        min-height: 30px;
+        padding: 5px 11px;
+        border-radius: 8px;
+        border: 1px solid #3b3b3b;
+        background-color: #2a2a2a;
+        color: #ececec;
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+      }
+
+      .ctrl-btn:hover {
+        background-color: #363636;
+      }
+
+      .ctrl-btn[aria-pressed="true"] {
+        background-color: #ececec;
+        color: #111111;
+        border-color: #ececec;
+      }
+
+      .ctrl-btn:focus-visible,
+      .ctrl-slider:focus-visible {
+        outline: 2px solid #ffffff;
+        outline-offset: 2px;
+      }
+
+      .ctrl-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .ctrl-slider {
+        width: 160px;
+        accent-color: #efefef;
+        cursor: pointer;
+      }
+
+      .ctrl-readout {
+        font-variant-numeric: tabular-nums;
+        color: #9e9e9e;
+        min-width: 84px;
+        text-align: right;
+      }
+
+      .ctrl-fps {
+        font-variant-numeric: tabular-nums;
+        color: #8f8f8f;
+        border-left: 1px solid #323232;
+        padding-left: 10px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .pdc-placeholder,
+        .pdc-word,
+        .pdc-icon-slot {
+          filter: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage-shell">
+      <h1 class="visually-hidden">Voice-to-Text Particle Dictation Card Comparison (Variant A vs Variant B)</h1>
+
+      <div id="stage" class="stage">
+        <div id="badge-a" class="badge badge-a" aria-hidden="true">A</div>
+        <div id="slot-a" class="card-slot card-slot-a"></div>
+
+        <div id="badge-b" class="badge badge-b" aria-hidden="true">B</div>
+        <div id="slot-b" class="card-slot card-slot-b"></div>
+      </div>
+    </main>
+
+    <!-- Accessible playback / scrubbing / A-B toggle / mic toolbar (WCAG 2.2.2 Pause, Stop, Hide) -->
+    <aside id="controls-dock" class="controls-dock" aria-label="Demo playback controls">
+      <button id="btn-play-pause" type="button" class="ctrl-btn">Pause</button>
+
+      <div class="ctrl-group">
+        <label for="time-scrubber" class="visually-hidden">Timeline timestamp in seconds</label>
+        <input
+          id="time-scrubber"
+          class="ctrl-slider"
+          type="range"
+          min="0"
+          max="14.05"
+          step="0.01"
+          value="0"
+        />
+        <span id="time-readout" class="ctrl-readout">0.00s / 14.05s</span>
+      </div>
+
+      <div class="ctrl-group" role="group" aria-label="Variant display">
+        <button id="btn-view-ab" type="button" class="ctrl-btn" aria-pressed="true">A + B</button>
+        <button id="btn-view-a" type="button" class="ctrl-btn" aria-pressed="false">A (ASCII)</button>
+        <button id="btn-view-b" type="button" class="ctrl-btn" aria-pressed="false">B (Dots)</button>
+      </div>
+
+      <button id="btn-mic-mode" type="button" class="ctrl-btn" aria-pressed="false">Live Mic</button>
+      <span id="fps-readout" class="ctrl-fps" aria-live="off">-- fps</span>
+    </aside>
+
+    <script>
+      (() => {
+        'use strict';
+
+        /* =====================================================================
+         * Shared Reference Constants & Engine (1:1 Mirror of ParticleDictationCard.tsx)
+         * =================================================================== */
+        const DEMO_LOOP_DURATION = 14.05;
+        const CARD_WIDTH = 878;
+        const CARD_HEIGHT = 270;
+
+        const DEMO_LINES = [
+          'Remind me to call Maya tomorrow morning, then',
+          'book a quiet table for two by the river.',
+        ];
+
+        const ASCII_RAMP =
+          " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+
+        const DEFAULT_WORD_TIMINGS = [
+          [1.86, 2.46, 2.66, 3.00], // 0: Remind
+          [2.14, 2.74, 2.94, 3.26], // 1: me
+          [2.38, 3.02, 3.24, 3.56], // 2: to
+          [2.78, 3.36, 3.58, 3.88], // 3: call
+          [3.12, 3.68, 3.84, 4.12], // 4: Maya
+          [3.52, 4.24, 4.38, 4.72], // 5: tomorrow
+          [3.96, 4.66, 4.86, 5.18], // 6: morning,
+          [4.56, 5.16, 5.34, 5.66], // 7: then
+          [4.88, 5.44, 5.62, 5.90], // 8: book
+          [5.22, 5.64, 5.78, 6.02], // 9: a
+          [5.40, 5.94, 6.12, 6.44], // 10: quiet
+          [5.70, 6.22, 6.38, 6.64], // 11: table
+          [5.96, 6.44, 6.58, 6.82], // 12: for
+          [6.20, 6.70, 6.86, 7.12], // 13: two
+          [6.48, 6.94, 7.08, 7.32], // 14: by
+          [6.72, 7.16, 7.30, 7.56], // 15: the
+          [7.00, 7.50, 7.66, 7.95], // 16: river.
+        ];
+
+        const TIMER_TICKS = [0.5, 1.48, 2.45, 3.43, 4.42, 5.4, 6.4];
+
+        function clamp(v, lo, hi) {
+          return v < lo ? lo : v > hi ? hi : v;
+        }
+
+        function lerp(a, b, t) {
+          return a + (b - a) * t;
+        }
+
+        function smoothstep(edge0, edge1, x) {
+          const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+          return t * t * (3 - 2 * t);
+        }
+
+        function hash2i(x, y, seed) {
+          let h = (x * 374761393 + y * 668265263 + seed * 1442695041) | 0;
+          h = ((h ^ (h >>> 13)) * 1274126177) | 0;
+          return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+        }
+
+        function smoothCellNoise(col, row, timeSec, rateHz) {
+          const t = timeSec * rateHz;
+          const ti = Math.floor(t);
+          const tf = t - ti;
+          const s = tf * tf * (3 - 2 * tf);
+          return hash2i(col, row, ti) + (hash2i(col, row, ti + 1) - hash2i(col, row, ti)) * s;
+        }
+
+        function formatTimer(seconds) {
+          const s = Math.max(0, Math.floor(seconds));
+          const mins = Math.floor(s / 60);
+          const secs = s % 60;
+          return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function computeDemoPhase(t) {
+          if (t < 0.5) return 'idle';
+          if (t < 7.15) return 'listening';
+          if (t < 9.32) return 'thinking';
+          if (t < 12.53) return 'completed';
+          return 'resetting';
+        }
+
+        function computeDemoTimerLabel(t) {
+          let sec = 0;
+          for (let i = 0; i < TIMER_TICKS.length; i++) {
+            if (t >= TIMER_TICKS[i]) sec = i;
+          }
+          return formatTimer(sec);
+        }
+
+        function computeDemoWaveAmplitude(t) {
+          if (t < 0.55 || t >= 10.0) return 0;
+          if (t < 1.02) {
+            const rise = smoothstep(0.55, 0.82, t);
+            return rise * (0.28 + 0.14 * Math.sin(t * 9.5));
+          }
+          if (t < 7.15) {
+            const ramp = smoothstep(0.96, 1.15, t);
+            const syllables =
+              0.82 +
+              0.13 * Math.sin(t * 3.8 + 0.9) +
+              0.09 * Math.sin(t * 8.1 - 0.6) +
+              0.06 * Math.cos(t * 13.7 + 0.4);
+            return clamp(ramp * syllables, 0.56, 1.0);
+          }
+          if (t < 9.32) {
+            const settle = 1 - smoothstep(7.15, 7.62, t);
+            const simmer = 0.23 + 0.04 * Math.sin(t * 5.2) + 0.025 * Math.cos(t * 9.4);
+            return lerp(simmer, 0.72, settle);
+          }
+          return (1 - smoothstep(9.32, 9.98, t)) * 0.24;
+        }
+
+        function sampleMountainRidge(u, t, amp, bands) {
+          if (amp <= 0.004) return 0;
+          const shiftedU = u + 0.06 * Math.sin(t * 1.9);
+          const coreBell = Math.exp(-3.55 * shiftedU * shiftedU);
+          const wideSkirt = 0.36 * Math.exp(-1.55 * u * u);
+          const rightGuard = 1 - smoothstep(0.62, 0.98, u);
+          const leftGuard = 1 - smoothstep(0.76, 1.02, -u);
+
+          let modulation;
+          if (bands && bands.length > 0) {
+            const dist = Math.abs(u);
+            const binF = clamp(dist * (bands.length * 0.65), 0, bands.length - 1);
+            const i0 = Math.floor(binF);
+            const i1 = Math.min(bands.length - 1, i0 + 1);
+            const binVal = lerp(bands[i0] || 0, bands[i1] || 0, binF - i0);
+            modulation = 0.42 + 0.88 * binVal + 0.16 * Math.sin(u * 9.5 + t * 5.2);
+          } else {
+            const h1 = 0.22 * Math.sin(u * 4.8 - t * 3.7);
+            const h2 = 0.18 * Math.sin(u * 9.7 + t * 6.4);
+            const h3 = 0.11 * Math.cos(u * 17.3 - t * 9.2);
+            const peakBreath = 0.84 + 0.22 * Math.sin(t * 5.1 + u * 2.2);
+            modulation = clamp(peakBreath + h1 + h2 + h3, 0.25, 1.35);
+          }
+          return clamp((coreBell * 0.78 + wideSkirt) * modulation * amp * rightGuard * leftGuard, 0, 1.05);
+        }
+
+        /* =====================================================================
+         * Pre-baked Offscreen Sprites & Real 4x4 Glyph Bitmap Sampler
+         * =================================================================== */
+        function createPrebakedAssets(dpr) {
+          const safeDpr = clamp(dpr || 1, 1, 3);
+
+          const bloomSize = 48;
+          const bloomSprite = document.createElement('canvas');
+          bloomSprite.width = bloomSize;
+          bloomSprite.height = bloomSize;
+          const bctx = bloomSprite.getContext('2d');
+          const bHalf = bloomSize / 2;
+          const bg = bctx.createRadialGradient(bHalf, bHalf, 1.5, bHalf, bHalf, bHalf);
+          bg.addColorStop(0.0, 'rgba(255, 255, 255, 0.72)');
+          bg.addColorStop(0.24, 'rgba(255, 255, 255, 0.34)');
+          bg.addColorStop(0.55, 'rgba(255, 255, 255, 0.10)');
+          bg.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+          bctx.fillStyle = bg;
+          bctx.fillRect(0, 0, bloomSize, bloomSize);
+
+          const pSize = 28;
+          const particleBloomSprite = document.createElement('canvas');
+          particleBloomSprite.width = pSize;
+          particleBloomSprite.height = pSize;
+          const pctx = particleBloomSprite.getContext('2d');
+          const pHalf = pSize / 2;
+          const pg = pctx.createRadialGradient(pHalf, pHalf, 0.5, pHalf, pHalf, pHalf);
+          pg.addColorStop(0.0, 'rgba(255, 255, 255, 0.65)');
+          pg.addColorStop(0.32, 'rgba(255, 255, 255, 0.22)');
+          pg.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+          pctx.fillStyle = pg;
+          pctx.fillRect(0, 0, pSize, pSize);
+
+          const asciiCellW = 10;
+          const asciiCellH = 16;
+          const asciiAtlas = document.createElement('canvas');
+          asciiAtlas.width = Math.ceil(ASCII_RAMP.length * asciiCellW * safeDpr);
+          asciiAtlas.height = Math.ceil(asciiCellH * safeDpr);
+          const actx = asciiAtlas.getContext('2d');
+          actx.scale(safeDpr, safeDpr);
+          actx.font =
+            '500 13.5px "Geist Mono", "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+          actx.textAlign = 'center';
+          actx.textBaseline = 'middle';
+          actx.fillStyle = '#F2F2F2';
+          for (let i = 0; i < ASCII_RAMP.length; i++) {
+            const ch = ASCII_RAMP[i];
+            if (ch !== ' ') {
+              actx.fillText(ch, i * asciiCellW + asciiCellW * 0.5, asciiCellH * 0.52);
+            }
+          }
+
+          return { bloomSprite, particleBloomSprite, asciiAtlas, asciiCellW, asciiCellH, dpr: safeDpr };
+        }
+
+        const scratchCanvas = document.createElement('canvas');
+
+        function sampleWordGlyphCells(word, rect, wordIndex) {
+          const pad = 4;
+          const w = Math.max(4, Math.ceil(rect.width) + pad * 2);
+          const h = Math.max(4, Math.ceil(rect.height) + pad * 2);
+          if (scratchCanvas.width < w) scratchCanvas.width = w;
+          if (scratchCanvas.height < h) scratchCanvas.height = h;
+          const ctx = scratchCanvas.getContext('2d', { willReadFrequently: true });
+          ctx.clearRect(0, 0, w, h);
+          ctx.font = rect.font;
+          ctx.fillStyle = '#FFFFFF';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+
+          const metrics = ctx.measureText(word);
+          const ascent =
+            typeof metrics.fontBoundingBoxAscent === 'number'
+              ? metrics.fontBoundingBoxAscent
+              : rect.height * 0.78;
+          const descent =
+            typeof metrics.fontBoundingBoxDescent === 'number'
+              ? metrics.fontBoundingBoxDescent
+              : rect.height * 0.22;
+          const verticalOffset = Math.max(0, (rect.height - (ascent + descent)) * 0.5);
+
+          ctx.fillText(word, pad, pad + verticalOffset);
+
+          const imgData = ctx.getImageData(0, 0, w, h).data;
+          const step = 4;
+          const cells = [];
+          const startX = pad;
+          const startY = pad;
+          const endX = pad + Math.ceil(rect.width);
+          const endY = pad + Math.ceil(rect.height);
+
+          for (let gy = startY; gy < endY; gy += step) {
+            for (let gx = startX; gx < endX; gx += step) {
+              let sumAlpha = 0;
+              let maxAlpha = 0;
+              let count = 0;
+              for (let dy = 0; dy < step && gy + dy < h; dy++) {
+                const rowOff = (gy + dy) * w;
+                for (let dx = 0; dx < step && gx + dx < w; dx++) {
+                  const a = imgData[(rowOff + gx + dx) * 4 + 3] / 255;
+                  sumAlpha += a;
+                  if (a > maxAlpha) maxAlpha = a;
+                  count++;
+                }
+              }
+              const avgAlpha = count > 0 ? sumAlpha / count : 0;
+              if (avgAlpha >= 0.14 || maxAlpha >= 0.52) {
+                const idx = cells.length;
+                const r1 = hash2i(wordIndex * 97 + idx, 11, 1337);
+                const r2 = hash2i(wordIndex * 97 + idx, 23, 7331);
+                const r3 = hash2i(wordIndex * 97 + idx, 37, 4242);
+                const r4 = hash2i(wordIndex * 97 + idx, 53, 9001);
+                const normX = clamp((gx - startX) / Math.max(1, rect.width), 0, 1);
+                cells.push({
+                  tx: rect.x + (gx - startX) + step * 0.5,
+                  ty: rect.y + (gy - startY) + step * 0.5,
+                  weight: clamp(avgAlpha * 1.55 + maxAlpha * 0.25, 0.28, 1.0),
+                  r1,
+                  r2,
+                  r3,
+                  r4,
+                  stagger: clamp(normX * 0.62 + r1 * 0.38, 0, 1),
+                  hasFlyer: true,
+                });
+              }
+            }
+          }
+
+          const maxFlyers = clamp(Math.round(word.length * 6.5), 14, 44);
+          if (cells.length > maxFlyers) {
+            const keepRatio = maxFlyers / cells.length;
+            for (let i = 0; i < cells.length; i++) {
+              cells[i].hasFlyer = cells[i].r4 <= keepRatio;
+            }
+          }
+          return cells;
+        }
+
+        function renderDictationCanvas(
+          ctx,
+          assets,
+          variant,
+          timeSec,
+          waveAmp,
+          frequencyBands,
+          words,
+          wordGlyphMap,
+          reducedMotion
+        ) {
+          ctx.clearRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+
+          const waveCenterX = CARD_WIDTH * 0.478;
+          const waveHalfWidth = CARD_WIDTH * 0.415;
+          const maxWaveHeight = CARD_HEIGHT * 0.62;
+          const waveBottomY = CARD_HEIGHT - 4;
+
+          if (waveAmp > 0.01) {
+            const glowR = 145 + waveAmp * 145;
+            const glowY = waveBottomY + 18;
+            const g = ctx.createRadialGradient(
+              waveCenterX,
+              glowY,
+              10,
+              waveCenterX,
+              glowY - waveAmp * 46,
+              glowR
+            );
+            const peakAlpha = clamp(waveAmp * (variant === 'dot-matrix' ? 0.17 : 0.14), 0, 0.18);
+            g.addColorStop(0.0, 'rgba(255, 255, 255, ' + peakAlpha.toFixed(3) + ')');
+            g.addColorStop(0.45, 'rgba(255, 255, 255, ' + (peakAlpha * 0.36).toFixed(3) + ')');
+            g.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, CARD_HEIGHT * 0.25, CARD_WIDTH, CARD_HEIGHT * 0.75);
+          }
+
+          const animT = reducedMotion ? Math.floor(timeSec * 2) * 0.5 : timeSec;
+
+          if (waveAmp > 0.012) {
+            if (variant === 'ascii') {
+              const cellW = 10;
+              const cellH = 16;
+              const cols = Math.floor((waveHalfWidth * 2) / cellW);
+              const rows = Math.ceil(maxWaveHeight / cellH) + 1;
+              const startX = waveCenterX - cols * cellW * 0.5;
+              const srcW = assets.asciiCellW * assets.dpr;
+              const srcH = assets.asciiCellH * assets.dpr;
+              const rampLen = ASCII_RAMP.length - 1;
+
+              for (let col = 0; col < cols; col++) {
+                const cx = startX + (col + 0.5) * cellW;
+                const u = (cx - waveCenterX) / waveHalfWidth;
+                const ridge = sampleMountainRidge(u, animT, waveAmp, frequencyBands);
+                if (ridge <= 0.025) continue;
+
+                const maxRow = Math.min(rows, Math.ceil((ridge * maxWaveHeight) / cellH) + 1);
+                for (let row = 0; row < maxRow; row++) {
+                  const v = ((row + 0.45) * cellH) / maxWaveHeight;
+                  const depth = ridge - v;
+                  if (depth < -0.055) continue;
+
+                  const bodyEnergy = smoothstep(-0.05, 0.24, depth);
+                  const shimmer = smoothCellNoise(col, row, animT, reducedMotion ? 1.5 : 15);
+                  const coreBoost = (1 - v) * 0.22;
+                  const intensity = clamp(
+                    bodyEnergy * (0.58 + 0.56 * shimmer) + coreBoost * bodyEnergy,
+                    0,
+                    1
+                  );
+                  if (depth < 0 && shimmer < 0.78) continue;
+
+                  const charSeed = smoothCellNoise(col + 31, row + 17, animT, reducedMotion ? 1.2 : 12);
+                  let charIdx;
+                  if (intensity >= 0.74) {
+                    const denseStart = rampLen - 10;
+                    charIdx = clamp(denseStart + Math.floor(charSeed * 11), denseStart, rampLen);
+                  } else {
+                    charIdx = clamp(Math.round((intensity / 0.74) * (rampLen - 10)), 1, rampLen - 10);
+                  }
+                  ctx.globalAlpha = clamp(0.20 + intensity * 0.76, 0.16, 0.94);
+                  ctx.drawImage(
+                    assets.asciiAtlas,
+                    charIdx * srcW,
+                    0,
+                    srcW,
+                    srcH,
+                    startX + col * cellW,
+                    waveBottomY - (row + 1) * cellH,
+                    cellW,
+                    cellH
+                  );
+                }
+              }
+              ctx.globalAlpha = 1;
+            } else {
+              const pitch = 10;
+              const cols = Math.floor((waveHalfWidth * 2) / pitch);
+              const rows = Math.ceil(maxWaveHeight / pitch) + 1;
+              const startX = waveCenterX - cols * pitch * 0.5;
+              const bloomDrawSize = 26;
+              const bloomHalf = 13;
+              const glowDots = [];
+
+              for (let col = 0; col < cols; col++) {
+                const cx = startX + (col + 0.5) * pitch;
+                const u = (cx - waveCenterX) / waveHalfWidth;
+                const ridge = sampleMountainRidge(u, animT, waveAmp, frequencyBands);
+                if (ridge <= 0.02) continue;
+
+                const maxRow = Math.min(rows, Math.ceil((ridge * maxWaveHeight) / pitch) + 1);
+                for (let row = 0; row < maxRow; row++) {
+                  const cy = waveBottomY - (row + 0.5) * pitch;
+                  const v = ((row + 0.5) * pitch) / maxWaveHeight;
+                  const depth = ridge - v;
+                  if (depth < -0.05) continue;
+
+                  const body = smoothstep(-0.045, 0.22, depth);
+                  const shimmer = smoothCellNoise(col, row, animT, reducedMotion ? 1.5 : 13);
+                  const signal = body * (0.18 + 0.96 * shimmer);
+                  if (signal < 0.14) continue;
+
+                  if (signal < 0.34) {
+                    const a = clamp(0.24 + (signal - 0.14) * 1.6, 0.22, 0.56);
+                    ctx.fillStyle = 'rgba(220, 220, 220, ' + a.toFixed(3) + ')';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy + 2.1, 1.2, 0, Math.PI * 2);
+                    ctx.fill();
+                  } else if (signal < 0.67) {
+                    const a = clamp(0.46 + (signal - 0.34) * 1.2, 0.45, 0.86);
+                    ctx.fillStyle = 'rgba(236, 236, 236, ' + a.toFixed(3) + ')';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy - 2.3, 1.35, 0, Math.PI * 2);
+                    ctx.arc(cx, cy + 2.3, 1.35, 0, Math.PI * 2);
+                    ctx.fill();
+                  } else {
+                    const intensity = clamp((signal - 0.67) / 0.33, 0, 1);
+                    const r = 3.55 + intensity * 0.45;
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.fill();
+                    glowDots.push({ x: cx, y: cy, alpha: 0.42 + intensity * 0.45 });
+                  }
+                }
+              }
+
+              if (glowDots.length > 0) {
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (let i = 0; i < glowDots.length; i++) {
+                  const gd = glowDots[i];
+                  ctx.globalAlpha = gd.alpha * 0.55;
+                  ctx.drawImage(
+                    assets.bloomSprite,
+                    gd.x - bloomHalf,
+                    gd.y - bloomHalf,
+                    bloomDrawSize,
+                    bloomDrawSize
+                  );
+                }
+                ctx.restore();
+              }
+            }
+          }
+
+          if (reducedMotion || words.length === 0) return;
+
+          const haloSize = 14;
+          const haloHalf = 7;
+          const sqSize = 3.3;
+          const dotRadius = 1.72;
+
+          for (let wIdx = 0; wIdx < words.length; wIdx++) {
+            const word = words[wIdx];
+            if (timeSec < word.launchStart || timeSec > word.sharpEnd + 0.05) continue;
+
+            const cells = wordGlyphMap.get(word.key);
+            if (!cells || cells.length === 0) continue;
+
+            const launchSpan = Math.max(0.26, word.arriveEnd - word.launchStart);
+            const flightDuration = clamp(launchSpan * 0.58, 0.28, 0.36);
+            const staggerSpan = Math.max(0.06, launchSpan - flightDuration);
+            const bitmapFadeOut =
+              timeSec >= word.blurStart
+                ? 1 - smoothstep(word.blurStart, lerp(word.blurStart, word.sharpEnd, 0.72), timeSec)
+                : 1;
+            if (bitmapFadeOut <= 0.005) continue;
+
+            for (let cIdx = 0; cIdx < cells.length; cIdx++) {
+              const cell = cells[cIdx];
+              const cellLaunch = word.launchStart + cell.stagger * staggerSpan;
+              const cellArrive = cellLaunch + flightDuration;
+              if (timeSec < cellLaunch) continue;
+
+              if (timeSec < cellArrive) {
+                if (!cell.hasFlyer) continue;
+                const rawU = clamp((timeSec - cellLaunch) / flightDuration, 0, 1);
+                const u = 1 - Math.pow(1 - rawU, 2.05);
+
+                const x0 = waveCenterX + (cell.r1 - 0.5) * 150;
+                const crestH = Math.max(38, waveAmp * maxWaveHeight * (0.42 + cell.r2 * 0.52));
+                const y0 = waveBottomY - crestH;
+                const x2 = cell.tx;
+                const y2 = cell.ty;
+                const dx = x2 - x0;
+                const cpx = x0 + dx * 0.42 + (dx < 0 ? 48 : -36) + (cell.r3 - 0.5) * 44;
+                const cpy = Math.min(y0, y2) - (16 + cell.r2 * 44);
+
+                const invU = 1 - u;
+                const px = invU * invU * x0 + 2 * invU * u * cpx + u * u * x2;
+                const py = invU * invU * y0 + 2 * invU * u * cpy + u * u * y2;
+
+                const tailLenU = (0.048 + 0.036 * Math.sin(rawU * Math.PI)) * (1 - rawU * 0.72);
+                const tailU = Math.max(0, u - tailLenU);
+                const invT = 1 - tailU;
+                const tx = invT * invT * x0 + 2 * invT * tailU * cpx + tailU * tailU * x2;
+                const ty = invT * invT * y0 + 2 * invT * tailU * cpy + tailU * tailU * y2;
+
+                const headAlpha =
+                  smoothstep(0, 0.12, rawU) * (0.84 + 0.16 * cell.weight) * bitmapFadeOut;
+
+                const trailGrad = ctx.createLinearGradient(px, py, tx, ty);
+                trailGrad.addColorStop(0, 'rgba(255, 255, 255, ' + (headAlpha * 0.68).toFixed(3) + ')');
+                trailGrad.addColorStop(0.55, 'rgba(255, 255, 255, ' + (headAlpha * 0.22).toFixed(3) + ')');
+                trailGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.strokeStyle = trailGrad;
+                ctx.lineWidth = variant === 'ascii' ? 2.1 : 2.3;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(tx, ty);
+                ctx.stroke();
+
+                const landingHaloFade = 1 - smoothstep(0.72, 1.0, rawU);
+                if (landingHaloFade > 0.02) {
+                  ctx.globalAlpha =
+                    headAlpha * (variant === 'dot-matrix' ? 0.65 : 0.4) * landingHaloFade;
+                  ctx.drawImage(
+                    assets.particleBloomSprite,
+                    px - haloHalf,
+                    py - haloHalf,
+                    haloSize,
+                    haloSize
+                  );
+                  ctx.globalAlpha = 1;
+                }
+
+                ctx.fillStyle = 'rgba(255, 255, 255, ' + headAlpha.toFixed(3) + ')';
+                const landT = smoothstep(0.78, 1.0, rawU);
+                if (variant === 'ascii') {
+                  const ps = lerp(4.0, 3.3, landT);
+                  ctx.fillRect(px - ps * 0.5, py - ps * 0.5, ps, ps);
+                } else {
+                  ctx.beginPath();
+                  ctx.arc(px, py, lerp(2.25, 1.72, landT), 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              } else {
+                const settlePop = smoothstep(cellArrive, cellArrive + 0.06, timeSec);
+                const alpha = clamp(cell.weight * settlePop * bitmapFadeOut * 0.96, 0, 1);
+                if (alpha <= 0.02) continue;
+
+                if (variant === 'ascii') {
+                  ctx.fillStyle = 'rgba(244, 244, 244, ' + alpha.toFixed(3) + ')';
+                  ctx.fillRect(cell.tx - sqSize * 0.5, cell.ty - sqSize * 0.5, sqSize, sqSize);
+                } else {
+                  if (cell.weight > 0.65) {
+                    ctx.globalAlpha = alpha * 0.28;
+                    ctx.drawImage(
+                      assets.particleBloomSprite,
+                      cell.tx - haloHalf * 0.72,
+                      cell.ty - haloHalf * 0.72,
+                      haloSize * 0.72,
+                      haloSize * 0.72
+                    );
+                    ctx.globalAlpha = 1;
+                  }
+                  ctx.fillStyle = 'rgba(248, 248, 248, ' + alpha.toFixed(3) + ')';
+                  ctx.beginPath();
+                  ctx.arc(cell.tx, cell.ty, dotRadius, 0, Math.PI * 2);
+                  ctx.fill();
+                }
+              }
+            }
+          }
+        }
+
+        /* =====================================================================
+         * Card Instance Mount
+         * =================================================================== */
+        function createCardInstance(container, variant, labelPrefix) {
+          const shell = document.createElement('div');
+          shell.className = 'pdc-shell';
+
+          const card = document.createElement('div');
+          card.className = 'pdc-card';
+          card.dataset.variant = variant;
+
+          const canvas = document.createElement('canvas');
+          canvas.className = 'pdc-canvas';
+          canvas.setAttribute('aria-hidden', 'true');
+          card.appendChild(canvas);
+
+          const textLayer = document.createElement('div');
+          textLayer.className = 'pdc-text-layer';
+
+          const phIdle = document.createElement('p');
+          phIdle.className = 'pdc-placeholder';
+          phIdle.setAttribute('aria-hidden', 'true');
+          phIdle.textContent = 'Tap the key and speak';
+          textLayer.appendChild(phIdle);
+
+          const phListen = document.createElement('p');
+          phListen.className = 'pdc-placeholder';
+          phListen.setAttribute('aria-hidden', 'true');
+          phListen.textContent = 'Listening...';
+          phListen.style.opacity = '0';
+          textLayer.appendChild(phListen);
+
+          const transcriptEl = document.createElement('div');
+          transcriptEl.className = 'pdc-transcript';
+          transcriptEl.setAttribute('aria-hidden', 'true');
+          textLayer.appendChild(transcriptEl);
+          card.appendChild(textLayer);
+
+          const liveRegion = document.createElement('div');
+          liveRegion.id = 'pdc-transcript-' + variant;
+          liveRegion.className = 'visually-hidden';
+          liveRegion.setAttribute('aria-live', 'polite');
+          liveRegion.setAttribute('aria-atomic', 'true');
+          card.appendChild(liveRegion);
+
+          const statusWrap = document.createElement('div');
+          statusWrap.className = 'pdc-status';
+          statusWrap.style.opacity = '0';
+          statusWrap.setAttribute('aria-hidden', 'true');
+          const statusDot = document.createElement('span');
+          statusDot.className = 'pdc-status-dot';
+          const statusText = document.createElement('span');
+          statusText.textContent = '0:00';
+          statusWrap.appendChild(statusDot);
+          statusWrap.appendChild(statusText);
+          card.appendChild(statusWrap);
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pdc-action-btn';
+          btn.setAttribute('aria-label', 'Start voice dictation (' + labelPrefix + ')');
+          btn.setAttribute('aria-describedby', liveRegion.id);
+
+          const iconMic = document.createElement('span');
+          iconMic.className = 'pdc-icon-slot';
+          iconMic.setAttribute('aria-hidden', 'true');
+          iconMic.innerHTML =
+            '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+            '<rect x="9" y="3.5" width="6" height="10.5" rx="3" stroke="#F0F0F0" stroke-width="2.1"/>' +
+            '<path d="M5.75 11.25a6.25 6.25 0 0 0 12.5 0" stroke="#F0F0F0" stroke-width="2.1" stroke-linecap="round"/>' +
+            '<line x1="12" y1="17.5" x2="12" y2="20.75" stroke="#F0F0F0" stroke-width="2.1" stroke-linecap="round"/>' +
+            '</svg>';
+          btn.appendChild(iconMic);
+
+          const iconStop = document.createElement('span');
+          iconStop.className = 'pdc-icon-slot';
+          iconStop.style.opacity = '0';
+          iconStop.setAttribute('aria-hidden', 'true');
+          iconStop.innerHTML = '<span class="pdc-stop-square"></span>';
+          btn.appendChild(iconStop);
+
+          const iconDots = document.createElement('span');
+          iconDots.className = 'pdc-icon-slot';
+          iconDots.style.opacity = '0';
+          iconDots.setAttribute('aria-hidden', 'true');
+          const waveDotsWrap = document.createElement('span');
+          waveDotsWrap.className = 'pdc-dots-wave';
+          const waveDots = [];
+          for (let i = 0; i < 3; i++) {
+            const wd = document.createElement('span');
+            wd.className = 'pdc-wave-dot';
+            waveDotsWrap.appendChild(wd);
+            waveDots.push(wd);
+          }
+          iconDots.appendChild(waveDotsWrap);
+          btn.appendChild(iconDots);
+          card.appendChild(btn);
+
+          shell.appendChild(card);
+          container.appendChild(shell);
+
+          // Build demo word spans
+          const wordSpans = new Map();
+          const demoWordRecords = [];
+          let globalIdx = 0;
+
+          function mountDemoWords() {
+            transcriptEl.innerHTML = '';
+            wordSpans.clear();
+            demoWordRecords.length = 0;
+            globalIdx = 0;
+
+            for (let l = 0; l < DEMO_LINES.length; l++) {
+              const lineSpan = document.createElement('span');
+              lineSpan.className = 'pdc-line';
+              const tokens = DEMO_LINES[l].split(/\s+/);
+              for (let p = 0; p < tokens.length; p++) {
+                const text = tokens[p];
+                const key = 'demo-' + globalIdx;
+                const timing = DEFAULT_WORD_TIMINGS[globalIdx];
+                demoWordRecords.push({
+                  key,
+                  text,
+                  launchStart: timing[0],
+                  arriveEnd: timing[1],
+                  blurStart: timing[2],
+                  sharpEnd: timing[3],
+                });
+
+                const wSpan = document.createElement('span');
+                wSpan.className = 'pdc-word';
+                wSpan.dataset.word = text;
+                wSpan.style.opacity = '0';
+                wSpan.textContent = text;
+                lineSpan.appendChild(wSpan);
+                wordSpans.set(key, wSpan);
+
+                if (p < tokens.length - 1) {
+                  lineSpan.appendChild(document.createTextNode(' '));
+                }
+                globalIdx++;
+              }
+              transcriptEl.appendChild(lineSpan);
+            }
+          }
+
+          function mountLiveWords(records) {
+            transcriptEl.innerHTML = '';
+            wordSpans.clear();
+            const lineSpan = document.createElement('span');
+            lineSpan.className = 'pdc-line';
+            for (let i = 0; i < records.length; i++) {
+              const r = records[i];
+              const wSpan = document.createElement('span');
+              wSpan.className = 'pdc-word';
+              wSpan.dataset.word = r.text;
+              wSpan.style.opacity = '0';
+              wSpan.textContent = r.text;
+              lineSpan.appendChild(wSpan);
+              wordSpans.set(r.key, wSpan);
+              if (i < records.length - 1) {
+                lineSpan.appendChild(document.createTextNode(' '));
+              }
+            }
+            transcriptEl.appendChild(lineSpan);
+          }
+
+          mountDemoWords();
+
+          const glyphMap = new Map();
+          let totalGlyphCells = 0;
+
+          function rebuildGlyphMasks() {
+            const cardRect = card.getBoundingClientRect();
+            if (cardRect.width === 0 || cardRect.height === 0) return;
+            const scaleX = CARD_WIDTH / cardRect.width;
+            const scaleY = CARD_HEIGHT / cardRect.height;
+            glyphMap.clear();
+            totalGlyphCells = 0;
+            let idx = 0;
+            wordSpans.forEach((spanEl, key) => {
+              const text = spanEl.dataset.word || '';
+              if (!text) return;
+              const r = spanEl.getBoundingClientRect();
+              const cs = window.getComputedStyle(spanEl);
+              const cells = sampleWordGlyphCells(
+                text,
+                {
+                  x: (r.left - cardRect.left) * scaleX,
+                  y: (r.top - cardRect.top) * scaleY,
+                  width: r.width * scaleX,
+                  height: r.height * scaleY,
+                  font: cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily,
+                },
+                idx
+              );
+              glyphMap.set(key, cells);
+              totalGlyphCells += cells.length;
+              idx++;
+            });
+          }
+
+          let assets = null;
+          let lastPhase = '';
+          let liveTrans = { from: 'idle', to: 'idle', startSec: -10 };
+
+          function render(state) {
+            const { mode, t, phase, bands, timerLabel, words, reducedMotion } = state;
+            let waveAmp = state.waveAmp;
+            const dpr = clamp(window.devicePixelRatio || 1, 1, 3);
+            const targetW = Math.round(CARD_WIDTH * dpr);
+            const targetH = Math.round(CARD_HEIGHT * dpr);
+            if (canvas.width !== targetW || canvas.height !== targetH) {
+              canvas.width = targetW;
+              canvas.height = targetH;
+            }
+            if (!assets || assets.dpr !== dpr) {
+              assets = createPrebakedAssets(dpr);
+            }
+
+            if (phase !== lastPhase) {
+              const prevP = lastPhase || 'idle';
+              lastPhase = phase;
+              liveTrans = { from: prevP, to: phase, startSec: t };
+              card.dataset.phase = phase;
+              const verb =
+                phase === 'listening'
+                  ? 'Stop voice dictation'
+                  : phase === 'thinking'
+                    ? 'Finalizing voice dictation'
+                    : 'Start voice dictation';
+              btn.setAttribute('aria-label', verb + ' (' + labelPrefix + ')');
+              if (phase === 'thinking') {
+                btn.setAttribute('aria-disabled', 'true');
+              } else {
+                btn.removeAttribute('aria-disabled');
+              }
+              if (mode === 'demo') {
+                liveRegion.textContent = phase === 'completed' ? DEMO_LINES.join(' ') : '';
+              }
+            }
+
+            if (mode !== 'demo') {
+              const phaseAge = Math.max(0, t - liveTrans.startSec);
+              if (phase === 'listening') {
+                waveAmp *= smoothstep(0, 0.28, phaseAge);
+              } else if (phase === 'thinking') {
+                waveAmp = lerp(0.24, Math.max(0.55, waveAmp), 1 - smoothstep(0, 0.45, phaseAge));
+              } else if (phase === 'completed' && liveTrans.from === 'thinking' && phaseAge < 0.68) {
+                waveAmp = (1 - smoothstep(0, 0.66, phaseAge)) * 0.24;
+              }
+            }
+
+            // Placeholders
+            let idleOp = 0;
+            let idleBlur = 0;
+            let listenOp = 0;
+            let listenBlur = 0;
+            if (mode === 'demo') {
+              if (t < 0.5) {
+                idleOp = 1;
+              } else if (t < 0.62) {
+                idleOp = 1 - smoothstep(0.5, 0.6, t);
+                listenOp = smoothstep(0.5, 0.62, t);
+              } else if (t < 1.74) {
+                listenOp = 1;
+              } else if (t < 2.02) {
+                const p = smoothstep(1.74, 2.0, t);
+                listenOp = 1 - p;
+                listenBlur = p * 8;
+              } else if (t >= 13.7) {
+                const p = smoothstep(13.7, 13.92, t);
+                idleOp = p;
+                idleBlur = (1 - p) * 6;
+              }
+            } else {
+              const hasWords = words.length > 0;
+              idleOp = phase === 'idle' && !hasWords ? 1 : 0;
+              listenOp = phase === 'listening' && !hasWords ? 1 : 0;
+            }
+
+            phIdle.style.opacity = idleOp.toFixed(3);
+            phIdle.style.filter =
+              !reducedMotion && idleBlur > 0.05 ? 'blur(' + idleBlur.toFixed(2) + 'px)' : 'none';
+            phListen.style.opacity = listenOp.toFixed(3);
+            phListen.style.filter =
+              !reducedMotion && listenBlur > 0.05 ? 'blur(' + listenBlur.toFixed(2) + 'px)' : 'none';
+
+            // Per-word blur-to-sharp & 530ms L-to-R staggered reset sweep
+            for (let i = 0; i < words.length; i++) {
+              const w = words[i];
+              const el = wordSpans.get(w.key);
+              if (!el) continue;
+              let op = 0;
+              let blurPx = 0;
+              if (mode === 'demo') {
+                if (t >= 12.53) {
+                  const total = Math.max(1, words.length - 1);
+                  const wStart = 12.53 + (i / total) * 0.34;
+                  const cp = smoothstep(wStart, wStart + 0.2, t);
+                  op = 1 - cp;
+                  blurPx = cp * 9.5;
+                } else if (reducedMotion) {
+                  op = t >= w.launchStart ? 1 : 0;
+                } else if (t >= w.blurStart) {
+                  const p = smoothstep(w.blurStart, w.sharpEnd, t);
+                  op = p;
+                  blurPx = (1 - p) * 7.5;
+                }
+              } else {
+                if (reducedMotion) {
+                  op = 1;
+                } else if (t >= w.blurStart) {
+                  const p = smoothstep(w.blurStart, w.sharpEnd, t);
+                  op = p;
+                  blurPx = (1 - p) * 7.5;
+                }
+              }
+              el.style.opacity = op.toFixed(3);
+              el.style.filter =
+                !reducedMotion && blurPx > 0.08 ? 'blur(' + blurPx.toFixed(2) + 'px)' : 'none';
+            }
+
+            // Status badge
+            let statusOp = 0;
+            let statusLabel = timerLabel;
+            let dotOp = 1;
+            let dotScale = 1;
+            if (mode === 'demo') {
+              if (t >= 0.5 && t < 7.15) {
+                statusOp = smoothstep(0.5, 0.68, t);
+              } else if (t >= 7.15 && t < 9.52) {
+                statusOp = t < 9.32 ? 1 : 1 - smoothstep(9.32, 9.5, t);
+                statusLabel = 'thinking';
+                const pulse = reducedMotion ? 1 : 0.5 + 0.5 * Math.cos((t - 7.15) * Math.PI * 2);
+                dotOp = 0.54 + 0.46 * pulse;
+                dotScale = 0.88 + 0.12 * pulse;
+              }
+            } else if (phase === 'listening') {
+              statusOp = 1;
+            } else if (phase === 'thinking') {
+              statusOp = 1;
+              statusLabel = 'thinking';
+              const pulse = reducedMotion ? 1 : 0.5 + 0.5 * Math.sin(t * Math.PI * 2);
+              dotOp = 0.42 + 0.58 * pulse;
+              dotScale = 0.86 + 0.14 * pulse;
+            }
+
+            statusWrap.style.opacity = statusOp.toFixed(3);
+            statusDot.style.opacity = dotOp.toFixed(3);
+            statusDot.style.transform = 'scale(' + dotScale.toFixed(3) + ')';
+            if (statusText.textContent !== statusLabel) statusText.textContent = statusLabel;
+
+            // Action button morphs
+            let micW = 0;
+            let stopW = 0;
+            let dotsW = 0;
+            let btnScale = 1;
+            if (mode === 'demo') {
+              if (t < 0.5) {
+                micW = 1;
+              } else if (t < 0.7) {
+                micW = 1 - smoothstep(0.5, 0.59, t);
+                stopW = smoothstep(0.56, 0.68, t);
+                btnScale = 1 - (reducedMotion ? 0 : Math.sin(smoothstep(0.5, 0.66, t) * Math.PI) * 0.045);
+              } else if (t < 7.15) {
+                stopW = 1;
+              } else if (t < 7.34) {
+                stopW = 1 - smoothstep(7.15, 7.24, t);
+                dotsW = smoothstep(7.2, 7.32, t);
+              } else if (t < 9.32) {
+                dotsW = 1;
+              } else if (t < 9.54) {
+                dotsW = 1 - smoothstep(9.32, 9.42, t);
+                micW = smoothstep(9.38, 9.52, t);
+              } else {
+                micW = 1;
+              }
+            } else {
+              const elapsed = Math.max(0, t - liveTrans.startSec);
+              const iconFor = (p) => (p === 'listening' ? 'stop' : p === 'thinking' ? 'dots' : 'mic');
+              const fromI = iconFor(liveTrans.from);
+              const toI = iconFor(phase);
+              if (fromI === toI || elapsed >= 0.2) {
+                micW = toI === 'mic' ? 1 : 0;
+                stopW = toI === 'stop' ? 1 : 0;
+                dotsW = toI === 'dots' ? 1 : 0;
+              } else {
+                const outW = 1 - smoothstep(0, 0.1, elapsed);
+                const inW = smoothstep(0.06, 0.19, elapsed);
+                micW = (fromI === 'mic' ? outW : 0) + (toI === 'mic' ? inW : 0);
+                stopW = (fromI === 'stop' ? outW : 0) + (toI === 'stop' ? inW : 0);
+                dotsW = (fromI === 'dots' ? outW : 0) + (toI === 'dots' ? inW : 0);
+                if (fromI === 'mic' && toI === 'stop' && !reducedMotion) {
+                  btnScale = 1 - Math.sin(smoothstep(0, 0.16, elapsed) * Math.PI) * 0.045;
+                }
+              }
+            }
+
+            btn.style.transform = btnScale !== 1 ? 'scale(' + btnScale.toFixed(4) + ')' : '';
+
+            function applySlot(el, w) {
+              el.style.opacity = w.toFixed(3);
+              el.style.transform = reducedMotion ? 'none' : 'scale(' + (0.58 + 0.42 * w).toFixed(3) + ')';
+              const b = (1 - w) * 4;
+              el.style.filter =
+                !reducedMotion && b > 0.15 && w > 0.01 ? 'blur(' + b.toFixed(2) + 'px)' : 'none';
+            }
+            applySlot(iconMic, micW);
+            applySlot(iconStop, stopW);
+            applySlot(iconDots, dotsW);
+
+            if (dotsW > 0.01) {
+              for (let d = 0; d < 3; d++) {
+                const phaseRad = (t - 7.15 - d * 0.15) * Math.PI * 2;
+                const wave = reducedMotion ? 0.7 : 0.5 + 0.5 * Math.sin(phaseRad);
+                const lum = Math.round(124 + wave * 120);
+                waveDots[d].style.backgroundColor = 'rgb(' + lum + ', ' + lum + ', ' + lum + ')';
+              }
+            }
+
+            // Render 60fps canvas layer
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            renderDictationCanvas(
+              ctx,
+              assets,
+              variant,
+              t,
+              waveAmp,
+              bands,
+              words,
+              glyphMap,
+              reducedMotion
+            );
+            ctx.restore();
+          }
+
+          return {
+            variant,
+            btn,
+            liveRegion,
+            demoWordRecords,
+            mountDemoWords,
+            mountLiveWords,
+            rebuildGlyphMasks,
+            render,
+            getGlyphCellCount: () => totalGlyphCells,
+          };
+        }
+
+        /* =====================================================================
+         * Stage Controller, Query Params (`?t=`), Responsive Fit & Live Mic
+         * =================================================================== */
+        const params = new URLSearchParams(window.location.search);
+        const rawT = params.get('t');
+        const scrubTimeParam = rawT !== null && rawT !== '' && Number.isFinite(Number(rawT)) ? Number(rawT) : null;
+        const cleanMode = params.get('clean') === '1' || scrubTimeParam !== null;
+        const initialVariantParam = (params.get('variant') || 'ab').toLowerCase();
+        const forceReducedMotion = params.get('reduced-motion') === '1';
+
+        const stageEl = document.getElementById('stage');
+        const badgeA = document.getElementById('badge-a');
+        const badgeB = document.getElementById('badge-b');
+        const slotA = document.getElementById('slot-a');
+        const slotB = document.getElementById('slot-b');
+        const dockEl = document.getElementById('controls-dock');
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const scrubber = document.getElementById('time-scrubber');
+        const timeReadout = document.getElementById('time-readout');
+        const fpsReadout = document.getElementById('fps-readout');
+        const btnViewAB = document.getElementById('btn-view-ab');
+        const btnViewA = document.getElementById('btn-view-a');
+        const btnViewB = document.getElementById('btn-view-b');
+        const btnMicMode = document.getElementById('btn-mic-mode');
+
+        if (cleanMode) {
+          dockEl.hidden = true;
+        }
+
+        const cardA = createCardInstance(slotA, 'ascii', 'Variant A ASCII');
+        const cardB = createCardInstance(slotB, 'dot-matrix', 'Variant B Dot-Matrix');
+
+        let mode = 'demo'; // 'demo' | 'microphone'
+        let paused = scrubTimeParam !== null;
+        let demoTime = scrubTimeParam !== null ? ((scrubTimeParam % DEMO_LOOP_DURATION) + DEMO_LOOP_DURATION) % DEMO_LOOP_DURATION : 0;
+        let viewMode = 'ab';
+
+        const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let reducedMotion = forceReducedMotion || mqReduce.matches;
+        mqReduce.addEventListener('change', (ev) => {
+          reducedMotion = forceReducedMotion || ev.matches;
+          renderOnce();
+        });
+
+        // Responsive scale for narrow viewports (at >=1080px, exact 1:1 1080x1080)
+        function updateStageScale() {
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const targetH = viewMode === 'ab' ? 1080 : 540;
+          const availH = cleanMode ? vh : Math.max(300, vh - 80);
+          const scale = Math.min(1, vw / 1080, availH / targetH);
+          stageEl.style.transform = scale < 0.999 ? 'scale(' + scale.toFixed(4) + ')' : 'none';
+          stageEl.style.marginBottom = scale < 0.999 ? -targetH * (1 - scale) + 'px' : '0px';
+        }
+
+        function setViewMode(next) {
+          viewMode = next === 'a' || next === 'b' ? next : 'ab';
+          const showA = viewMode === 'ab' || viewMode === 'a';
+          const showB = viewMode === 'ab' || viewMode === 'b';
+          badgeA.classList.toggle('hidden', !showA);
+          slotA.classList.toggle('hidden', !showA);
+          badgeB.classList.toggle('hidden', !showB);
+          slotB.classList.toggle('hidden', !showB);
+          stageEl.classList.toggle('single-card', viewMode !== 'ab');
+          btnViewAB.setAttribute('aria-pressed', String(viewMode === 'ab'));
+          btnViewA.setAttribute('aria-pressed', String(viewMode === 'a'));
+          btnViewB.setAttribute('aria-pressed', String(viewMode === 'b'));
+          updateStageScale();
+          rebuildAllMasks();
+          renderOnce();
+        }
+
+        function rebuildAllMasks() {
+          cardA.rebuildGlyphMasks();
+          cardB.rebuildGlyphMasks();
+        }
+
+        // Live Microphone Controller
+        const micState = {
+          phase: 'idle',
+          audioLevel: 0,
+          bands: new Float32Array(32),
+          startTimeMs: 0,
+          words: [],
+          stream: null,
+          audioCtx: null,
+          analyser: null,
+          freqBuf: null,
+          timeBuf: null,
+          recognition: null,
+          thinkingTimer: null,
+        };
+
+        function stopMicResources() {
+          if (micState.recognition) {
+            try { micState.recognition.stop(); } catch (_) {}
+            micState.recognition = null;
+          }
+          if (micState.stream) {
+            micState.stream.getTracks().forEach((tr) => tr.stop());
+            micState.stream = null;
+          }
+          if (micState.audioCtx) {
+            micState.audioCtx.close().catch(() => {});
+            micState.audioCtx = null;
+          }
+          micState.analyser = null;
+        }
+
+        async function startMicrophone() {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+          if (micState.thinkingTimer) clearTimeout(micState.thinkingTimer);
+          stopMicResources();
+          micState.words = [];
+          cardA.mountLiveWords([]);
+          cardB.mountLiveWords([]);
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micState.stream = stream;
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new Ctx();
+            micState.audioCtx = audioCtx;
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 128;
+            analyser.smoothingTimeConstant = 0.78;
+            audioCtx.createMediaStreamSource(stream).connect(analyser);
+            micState.analyser = analyser;
+            micState.freqBuf = new Uint8Array(analyser.frequencyBinCount);
+            micState.timeBuf = new Uint8Array(analyser.fftSize);
+            micState.startTimeMs = performance.now();
+            micState.phase = 'listening';
+
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SR) {
+              try {
+                const rec = new SR();
+                rec.continuous = true;
+                rec.interimResults = true;
+                rec.lang = 'en-US';
+                rec.onresult = (ev) => {
+                  let text = '';
+                  for (let i = 0; i < ev.results.length; i++) {
+                    text += ev.results[i][0].transcript;
+                  }
+                  const tokens = text.trim().split(/\s+/).filter(Boolean);
+                  const nowSec = performance.now() / 1000;
+                  const next = tokens.map((tok, i) => {
+                    const prev = micState.words[i];
+                    if (prev && prev.text === tok) return prev;
+                    return {
+                      key: 'live-' + i + '-' + tok,
+                      text: tok,
+                      launchStart: nowSec,
+                      arriveEnd: nowSec + 0.48,
+                      blurStart: nowSec + 0.62,
+                      sharpEnd: nowSec + 0.98,
+                    };
+                  });
+                  micState.words = next;
+                  cardA.mountLiveWords(next);
+                  cardB.mountLiveWords(next);
+                  cardA.liveRegion.textContent = text.trim();
+                  cardB.liveRegion.textContent = text.trim();
+                  rebuildAllMasks();
+                };
+                rec.start();
+                micState.recognition = rec;
+              } catch (_) {
+                // Keep live microphone waveform running if SpeechRecognition fails to start
+              }
+            }
+          } catch (_) {
+            stopMicResources();
+            micState.phase = 'idle';
+          }
+        }
+
+        function stopMicrophone() {
+          stopMicResources();
+          micState.phase = 'thinking';
+          micState.audioLevel = 0.24;
+          if (micState.thinkingTimer) clearTimeout(micState.thinkingTimer);
+          micState.thinkingTimer = setTimeout(() => {
+            micState.phase = 'completed';
+            micState.audioLevel = 0;
+            micState.bands.fill(0);
+          }, 1200);
+        }
+
+        function handleCardAction() {
+          if (mode === 'microphone') {
+            if (micState.phase === 'idle' || micState.phase === 'completed') {
+              startMicrophone();
+            } else if (micState.phase === 'listening') {
+              stopMicrophone();
+            }
+          } else {
+            const p = computeDemoPhase(demoTime);
+            demoTime = p === 'listening' ? 7.15 : 0.5;
+            paused = false;
+            btnPlayPause.textContent = 'Pause';
+            renderOnce();
+          }
+        }
+
+        cardA.btn.addEventListener('click', handleCardAction);
+        cardB.btn.addEventListener('click', handleCardAction);
+
+        // Toolbar handlers (WCAG 2.2.2 Pause/Play toggles label without aria-pressed)
+        btnPlayPause.addEventListener('click', () => {
+          paused = !paused;
+          btnPlayPause.textContent = paused ? 'Play' : 'Pause';
+        });
+
+        scrubber.addEventListener('input', () => {
+          mode = 'demo';
+          btnMicMode.setAttribute('aria-pressed', 'false');
+          stopMicResources();
+          paused = true;
+          btnPlayPause.textContent = 'Play';
+          demoTime = Number(scrubber.value);
+          renderOnce();
+        });
+
+        btnViewAB.addEventListener('click', () => setViewMode('ab'));
+        btnViewA.addEventListener('click', () => setViewMode('a'));
+        btnViewB.addEventListener('click', () => setViewMode('b'));
+
+        btnMicMode.addEventListener('click', () => {
+          if (mode === 'demo') {
+            mode = 'microphone';
+            btnMicMode.setAttribute('aria-pressed', 'true');
+            micState.phase = 'idle';
+            micState.words = [];
+            cardA.mountLiveWords([]);
+            cardB.mountLiveWords([]);
+            startMicrophone();
+          } else {
+            mode = 'demo';
+            btnMicMode.setAttribute('aria-pressed', 'false');
+            stopMicResources();
+            cardA.mountDemoWords();
+            cardB.mountDemoWords();
+            rebuildAllMasks();
+            renderOnce();
+          }
+        });
+
+        // Performance & Debug Telemetry
+        const perfStats = {
+          frames: 0,
+          drawTimesMs: [],
+          frameDeltasMs: [],
+          fps: 0,
+          avgDrawMs: 0,
+          p95DrawMs: 0,
+          lastFpsUpdateMs: 0,
+          fpsFrames: 0,
+        };
+
+        function sampleMicAudio() {
+          if (!micState.analyser) return;
+          micState.analyser.getByteFrequencyData(micState.freqBuf);
+          micState.analyser.getByteTimeDomainData(micState.timeBuf);
+          let sumSq = 0;
+          for (let i = 0; i < micState.timeBuf.length; i++) {
+            const c = (micState.timeBuf[i] - 128) / 128;
+            sumSq += c * c;
+          }
+          micState.audioLevel = clamp(Math.sqrt(sumSq / micState.timeBuf.length) * 3.4, 0.22, 1.0);
+          const step = Math.max(1, Math.floor(micState.freqBuf.length / micState.bands.length));
+          for (let i = 0; i < micState.bands.length; i++) {
+            micState.bands[i] = clamp((micState.freqBuf[i * step] || 0) / 225, 0, 1);
+          }
+        }
+
+        function renderOnce() {
+          const t0 = performance.now();
+          let state;
+          if (mode === 'demo') {
+            state = {
+              mode: 'demo',
+              t: demoTime,
+              phase: computeDemoPhase(demoTime),
+              waveAmp: computeDemoWaveAmplitude(demoTime),
+              bands: null,
+              timerLabel: computeDemoTimerLabel(demoTime),
+              words: cardA.demoWordRecords,
+              reducedMotion,
+            };
+          } else {
+            sampleMicAudio();
+            const elapsed = micState.phase === 'listening' ? (t0 - micState.startTimeMs) / 1000 : 0;
+            state = {
+              mode: 'microphone',
+              t: t0 / 1000,
+              phase: micState.phase,
+              waveAmp:
+                micState.phase === 'listening'
+                  ? Math.max(0.28, micState.audioLevel)
+                  : micState.phase === 'thinking'
+                    ? 0.24
+                    : 0,
+              bands: micState.phase === 'listening' ? micState.bands : null,
+              timerLabel: formatTimer(elapsed),
+              words: micState.words,
+              reducedMotion,
+            };
+          }
+
+          if (viewMode === 'ab' || viewMode === 'a') cardA.render(state);
+          if (viewMode === 'ab' || viewMode === 'b') cardB.render(state);
+
+          const drawMs = performance.now() - t0;
+          perfStats.drawTimesMs.push(drawMs);
+          if (perfStats.drawTimesMs.length > 240) perfStats.drawTimesMs.shift();
+          perfStats.frames++;
+
+          if (!cleanMode) {
+            scrubber.value = demoTime.toFixed(2);
+            timeReadout.textContent = demoTime.toFixed(2) + 's / ' + DEMO_LOOP_DURATION.toFixed(2) + 's';
+          }
+        }
+
+        let lastRafMs = null;
+
+        function loop(nowMs) {
+          if (lastRafMs !== null) {
+            const dtMs = nowMs - lastRafMs;
+            perfStats.frameDeltasMs.push(dtMs);
+            if (perfStats.frameDeltasMs.length > 240) perfStats.frameDeltasMs.shift();
+
+            if (mode === 'demo' && !paused) {
+              demoTime = (demoTime + clamp(dtMs / 1000, 0, 0.1)) % DEMO_LOOP_DURATION;
+            }
+
+            perfStats.fpsFrames++;
+            if (nowMs - perfStats.lastFpsUpdateMs >= 400) {
+              perfStats.fps = (perfStats.fpsFrames * 1000) / Math.max(1, nowMs - perfStats.lastFpsUpdateMs);
+              perfStats.fpsFrames = 0;
+              perfStats.lastFpsUpdateMs = nowMs;
+              const sorted = perfStats.drawTimesMs.slice().sort((a, b) => a - b);
+              perfStats.avgDrawMs =
+                sorted.reduce((acc, v) => acc + v, 0) / Math.max(1, sorted.length);
+              perfStats.p95DrawMs = sorted[Math.floor(sorted.length * 0.95)] || 0;
+              if (!cleanMode) {
+                fpsReadout.textContent =
+                  Math.round(perfStats.fps) + ' fps (' + perfStats.avgDrawMs.toFixed(2) + 'ms)';
+              }
+            }
+          } else {
+            perfStats.lastFpsUpdateMs = nowMs;
+          }
+          lastRafMs = nowMs;
+
+          renderOnce();
+          if (scrubTimeParam === null) {
+            window.requestAnimationFrame(loop);
+          }
+        }
+
+        // Expose deterministic verification API on window for automated checks
+        window.__PDC_DEBUG__ = {
+          setTime: (sec) => {
+            mode = 'demo';
+            paused = true;
+            demoTime = ((sec % DEMO_LOOP_DURATION) + DEMO_LOOP_DURATION) % DEMO_LOOP_DURATION;
+            renderOnce();
+            return {
+              time: demoTime,
+              phase: computeDemoPhase(demoTime),
+              glyphCellsA: cardA.getGlyphCellCount(),
+              glyphCellsB: cardB.getGlyphCellCount(),
+            };
+          },
+          getStats: () => {
+            const sortedDraw = perfStats.drawTimesMs.slice().sort((a, b) => a - b);
+            const sortedDt = perfStats.frameDeltasMs.slice().sort((a, b) => a - b);
+            const avgDraw = sortedDraw.reduce((a, b) => a + b, 0) / Math.max(1, sortedDraw.length);
+            const avgDt = sortedDt.reduce((a, b) => a + b, 0) / Math.max(1, sortedDt.length);
+            return {
+              frames: perfStats.frames,
+              measuredFps: avgDt > 0 ? 1000 / avgDt : 0,
+              avgFrameDeltaMs: avgDt,
+              p95FrameDeltaMs: sortedDt[Math.floor(sortedDt.length * 0.95)] || 0,
+              avgDrawMs: avgDraw,
+              p95DrawMs: sortedDraw[Math.floor(sortedDraw.length * 0.95)] || 0,
+              glyphCellsA: cardA.getGlyphCellCount(),
+              glyphCellsB: cardB.getGlyphCellCount(),
+              phase: computeDemoPhase(demoTime),
+              time: demoTime,
+            };
+          },
+          setReducedMotion: (val) => {
+            reducedMotion = Boolean(val);
+            renderOnce();
+          },
+          setViewMode,
+        };
+
+        // Initial setup
+        setViewMode(initialVariantParam);
+        window.addEventListener('resize', () => {
+          updateStageScale();
+          rebuildAllMasks();
+          renderOnce();
+        });
+
+        const startRender = () => {
+          rebuildAllMasks();
+          renderOnce();
+          if (scrubTimeParam === null) {
+            window.requestAnimationFrame(loop);
+          }
+        };
+
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(startRender).catch(startRender);
+        } else {
+          startRender();
+        }
+      })();
+    </script>
+  </body>
+</html>
