@@ -4,6 +4,14 @@
 [![Antigravity Skill](https://img.shields.io/badge/Antigravity-Skill-blue)](./SKILL.md)
 [![React & SwiftUI](https://img.shields.io/badge/Targets-React%20%7C%20SwiftUI%20(Swift%206)-111111)](./examples)
 
+<div align="center">
+
+![Voice-to-Text Particle Dictation Card — Variant A (ASCII) top vs. Variant B (Dot-Matrix Bloom) bottom](./assets/preview.gif)
+
+*Rendered live from our clean-room [`examples/react/demo.html`](./examples/react/demo.html) — **Variant A** (ASCII density ramp, top) vs. **Variant B** (dot-matrix bloom, bottom).*
+
+</div>
+
 An **Antigravity Skill** and verified cross-platform reference implementation for building a **60fps Voice-to-Text Particle Dictation Card** in **React / HTML5 Canvas** and **SwiftUI / CoreText / `AVAudioEngine` (macOS 14+ & iOS 17+, Swift 6)**.
 
 Live vocal energy rises along a shared 2D mountain heightfield at the bottom edge, launches luminous particles along curved quadratic Bézier arcs toward the active text cursor, locks each incoming word onto a real `4×4` offscreen glyph bitmap, and crossfades through a soft Gaussian blur into crisp typography.
@@ -73,6 +81,8 @@ Because `SKILL.md` sits at the repository root and matches the folder name `part
 ```text
 particle-dictation-ui/
 ├── SKILL.md                                    # Antigravity skill entrypoint, workflow & verified pitfalls
+├── assets/
+│   └── preview.gif                             # Live clean-room preview rendered from examples/react/demo.html
 ├── references/
 │   ├── motion-spec.md                          # 1080p geometry, color tokens, 60fps timeline & waveform/arc math
 │   └── audio-asr-integration.md                # Web Audio/SpeechRecognition, AVAudioEngine/vDSP & accessibility guide
